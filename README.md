@@ -19,18 +19,31 @@ The environment is set up using Docker to ensure reproducibility across differen
 ### Steps:
 1. Clone this repository:
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone git@github.com:Cpicon/e2e_ml_application.git
+    cd e2e_ml_application
     ```
 
-2. Build the Docker image:
+you can use the provided `Makefile` to build, run, stop, and clean up Docker containers for different environments (dev, stage, prod).
+
+#### Steps:
+1. Build the Docker image for the specified environment:
     ```bash
-    docker build -t mnist-env .
+    make build TARGET=<dev|stage|prod>
     ```
 
-3. Run the Docker container:
+2. Run the Docker container for the specified environment:
     ```bash
-    docker run -it --name mnist-container mnist-env
+    make run TARGET=<dev|stage|prod>
+    ```
+
+3. Stop the Docker container for the specified environment:
+    ```bash
+    make stop TARGET=<dev|stage|prod>
+    ```
+
+4. Clean up the Docker containers and associated resources:
+    ```bash
+    make clean TARGET=<dev|stage|prod>
     ```
 
 ## Data Handling
