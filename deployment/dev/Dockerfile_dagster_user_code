@@ -1,0 +1,33 @@
+# The builder image, used to build the virtual environment
+FROM python:3.10-slim as builder
+
+RUN pip install poetry
+
+ENV POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_IN_PROJECT=1 \
+    POETRY_VIRTUALENVS_CREATE=1 \
+    POETRY_CACHE_DIR=/tmp/poetry_cache
+
+WORKDIR /opt/dagster/app
+
+COPY pyproject.toml poetry.lock README.md ./
+# --no-root option instructs Poetry to avoid installing e2eML folder into the virtual environment.
+RUN poetry install --only main --no-root && rm -rf $POETRY_CACHE_DIR
+
+FROM python:3.10-slim
+# Add repository code
+ENV VIRTUAL_ENV=/opt/dagster/app/.venv \
+    PATH="/opt/dagster/app/.venv/bin:$PATH"
+
+COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
+
+WORKDIR /opt/dagster/app
+
+COPY e2eML/ /opt/dagster/app/
+
+# Run dagster gRPC server on port 4000
+EXPOSE 4000
+
+# Using CMD rather than ENTRYPOINT allows the command to be overridden in
+# run launchers or executors to run other commands using this image
+CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-f", "repo.py"]
