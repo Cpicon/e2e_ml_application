@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "e2eML"
+version = "0.1.0"
+description = "\"End to end machine learning pipeline.\""
+authors = [
+    "ChristianP <christian91mp@gmail.com>",
+    ]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+python-dotenv = "^1.0.1"
+pandas= "^2.2.2"
+torch = "2.2.2"
+scikit-learn = "^1.5.1"
+dagster = "^1.8.0"
+dagster-pandas = "^0.24.0"
+dagster-graphql = "^1.8.0"
+dagster-webserver = "^1.8.0"
+dagster-postgres = "^0.24.0"
+dagster-docker = "^0.24.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
