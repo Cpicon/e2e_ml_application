@@ -24,6 +24,7 @@ class MNISTConfig(Config):
     train_filename: str = "mnist_train_data.pt"
     test_filename: str = "mnist_test_data.pt"
     batch_size: int = 64
+    shuffle: bool = True
 
 
 @asset
@@ -152,12 +153,12 @@ def get_data_loader(context: AssetExecutionContext, config: MNISTConfig):
     training_path = os.path.join(config.train_folder_path, config.train_filename)
     training_data = torch.load(training_path)
     context.log.info(f"Training data loaded: {training_data}")
-    train_dataloader = DataLoader(training_data, batch_size=config.batch_size)
+    train_dataloader = DataLoader(training_data, batch_size=config.batch_size, shuffle=config.shuffle)
 
     test_path = os.path.join(config.test_folder_path, config.test_filename)
     test_data = torch.load(test_path)
     context.log.info(f"Test data loaded: {test_data}")
-    test_dataloader = DataLoader(test_data, batch_size=config.batch_size)
+    test_dataloader = DataLoader(test_data, batch_size=config.batch_size, shuffle=False)
     return test_dataloader, train_dataloader
 
 
