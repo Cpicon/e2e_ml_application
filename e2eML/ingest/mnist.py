@@ -3,7 +3,7 @@ import os
 from io import BytesIO
 import torch
 from matplotlib import pyplot as plt
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
@@ -23,6 +23,7 @@ class MNISTConfig(Config):
     test_folder_path: str = "data/MNIST/test/"
     train_filename: str = "mnist_train_data.pt"
     test_filename: str = "mnist_test_data.pt"
+    validation_percentage: float = 0.2
     batch_size: int = 64
     shuffle: bool = True
 
@@ -136,6 +137,7 @@ def test_MNIST_data(
 @multi_asset(
     outs={
         "test_dataloader": AssetOut(),
+        "val_dataloader": AssetOut(),
         "train_dataloader": AssetOut(),
     },
     deps=[train_MNIST_data, test_MNIST_data],
@@ -152,14 +154,32 @@ def get_data_loader(context: AssetExecutionContext, config: MNISTConfig):
     """
     training_path = os.path.join(config.train_folder_path, config.train_filename)
     training_data = torch.load(training_path)
-    context.log.info(f"Training data loaded: {training_data}")
-    train_dataloader = DataLoader(training_data, batch_size=config.batch_size, shuffle=config.shuffle)
+
+    # Define the validation percentage
+    validation_percentage = config.validation_percentage
+    n_train = len(training_data)
+    n_validation = int(n_train * validation_percentage)  # 20% of the training data
+
+    # Use random_split to split the dataset
+    train_data, validation_data = random_split(
+        training_data, [n_train - n_validation, n_validation]
+    )
+
+    context.log.info(f"Training data loaded. Number of samples: {len(train_data)}")
+    context.log.info(f"Validation data loaded. Number of samples: {len(validation_data)}")
+    train_dataloader = DataLoader(
+        train_data, batch_size=config.batch_size, shuffle=config.shuffle
+    )
+
+    val_dataloader = DataLoader(
+        validation_data, batch_size=config.batch_size, shuffle=False
+    )
 
     test_path = os.path.join(config.test_folder_path, config.test_filename)
     test_data = torch.load(test_path)
     context.log.info(f"Test data loaded: {test_data}")
     test_dataloader = DataLoader(test_data, batch_size=config.batch_size, shuffle=False)
-    return test_dataloader, train_dataloader
+    return test_dataloader, val_dataloader, train_dataloader
 
 
 @asset
