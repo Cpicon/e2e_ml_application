@@ -12,20 +12,12 @@ from dagster import (
     MetadataValue,
     asset,
     AssetExecutionContext,
-    Config,
-    AssetOut,
-    multi_asset,
+    op,
+    OpExecutionContext,
+    graph_asset,
 )
 
-
-class MNISTConfig(Config):
-    train_folder_path: str = "data/MNIST/train/"
-    test_folder_path: str = "data/MNIST/test/"
-    train_filename: str = "mnist_train_data.pt"
-    test_filename: str = "mnist_test_data.pt"
-    validation_percentage: float = 0.2
-    batch_size: int = 64
-    shuffle: bool = True
+from ..pipeline_configs import MNISTConfig
 
 
 @asset
@@ -134,23 +126,20 @@ def test_MNIST_data(
     )
 
 
-@multi_asset(
-    outs={
-        "test_dataloader": AssetOut(),
-        "val_dataloader": AssetOut(),
-        "train_dataloader": AssetOut(),
-    },
-    deps=[train_MNIST_data, test_MNIST_data],
-)
-def get_data_loader(context: AssetExecutionContext, config: MNISTConfig):
-    """Loads the MNIST training and test data and returns DataLoaders.
+def get_data_loader(
+    context: OpExecutionContext | AssetExecutionContext, config: MNISTConfig
+) -> tuple[DataLoader, DataLoader, DataLoader]:
+    """Loads MNIST dataset and returns DataLoaders for training, validation, and test sets.
 
     Args:
-        context (AssetExecutionContext): The execution context provided by Dagster.
-        config (MNISTConfig): Configuration settings including paths, filenames, and batch size.
+        context (OpExecutionContext | AssetExecutionContext): The execution context provided by Dagster.
+        config (MNISTConfig): Configuration settings including folder paths, filenames, batch size, and validation percentage.
 
     Returns:
-        tuple: A tuple containing the test and train DataLoader objects.
+        tuple[DataLoader, DataLoader, DataLoader]: A tuple containing three DataLoader objects:
+            - The DataLoader for the training data.
+            - The DataLoader for the validation data.
+            - The DataLoader for the test data.
     """
     training_path = os.path.join(config.train_folder_path, config.train_filename)
     training_data = torch.load(training_path)
@@ -166,7 +155,9 @@ def get_data_loader(context: AssetExecutionContext, config: MNISTConfig):
     )
 
     context.log.info(f"Training data loaded. Number of samples: {len(train_data)}")
-    context.log.info(f"Validation data loaded. Number of samples: {len(validation_data)}")
+    context.log.info(
+        f"Validation data loaded. Number of samples: {len(validation_data)}"
+    )
     train_dataloader = DataLoader(
         train_data, batch_size=config.batch_size, shuffle=config.shuffle
     )
@@ -183,18 +174,32 @@ def get_data_loader(context: AssetExecutionContext, config: MNISTConfig):
 
 
 @asset
-def print_data(train_dataloader) -> MaterializeResult:
-    """Generates and logs a visual preview of the first batch of MNIST training data.
+def get_dataloader(context: OpExecutionContext, config: MNISTConfig) -> DataLoader:
+    """Loads the MNIST training data and returns a DataLoader.
 
     Args:
-        train_dataloader (DataLoader): The DataLoader for the MNIST training data.
+        context (OpExecutionContext): The execution context provided by Dagster.
+        config (MNISTConfig): Configuration settings including paths, filenames, and batch size.
 
     Returns:
-        MaterializeResult: The result of materializing the data preview, including metadata
-            such as the shape and dtype of the data, and a visual preview of the images.
+        DataLoader: The DataLoader for the MNIST training data.
+    """
+    _, _, train_dataloader = get_data_loader(context, config)
+    return train_dataloader
+
+
+@op
+def plot(dataloader):
+    """Generates and returns a preview of images from the MNIST training DataLoader.
+
+    Args:
+        dataloader (DataLoader): DataLoader for MNIST training data providing batches of images and labels.
+
+    Returns:
+        MaterializeResult: Contains metadata with a markdown preview of the first batch of images in the DataLoader.
     """
     image_data = None
-    for X, y in train_dataloader:
+    for X, y in dataloader:
         # Create a figure with subplots arranged in a grid
         fig, axes = plt.subplots(2, 5, figsize=(15, 6))  # 2 rows, 5 columns
 
@@ -222,3 +227,17 @@ def print_data(train_dataloader) -> MaterializeResult:
             "preview": MetadataValue.md(md_content),
         },
     )
+
+
+@graph_asset
+def print_data(get_dataloader) -> MaterializeResult:
+    """Generates and logs a visual preview of the first batch of MNIST training data.
+
+    Args:
+        get_train_dataloader (DataLoader): The DataLoader for the MNIST training data.
+
+    Returns:
+        MaterializeResult: The result of materializing the data preview, including metadata
+            such as the shape and dtype of the data, and a visual preview of the images.
+    """
+    return plot(get_dataloader)
