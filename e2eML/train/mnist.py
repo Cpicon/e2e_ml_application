@@ -6,7 +6,8 @@ from dagster import (
     MetadataValue,
     AssetExecutionContext,
     AssetOut,
-    multi_asset, OpExecutionContext,
+    multi_asset,
+    OpExecutionContext,
 )
 from torch.utils.data import DataLoader
 
@@ -16,23 +17,30 @@ from ..pipeline_configs import MNISTConfig
 
 
 def train(
-    context: OpExecutionContext | AssetExecutionContext, model: nn.Module, optimizer: optim.Optimizer, loss_fn: nn.Module, n_epochs: int, trainloader: DataLoader, valoader: DataLoader, device: str
+    context: OpExecutionContext | AssetExecutionContext,
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    loss_fn: nn.Module,
+    n_epochs: int,
+    trainloader: DataLoader,
+    valoader: DataLoader,
+    device: str,
 ) -> dict[str, float]:
     """Trains the model on the training data and evaluates it on the validation data.
 
-        Args:
-            context (OpExecutionContext | AssetExecutionContext): The execution context provided by Dagster.
-            model (nn.Module): The PyTorch model to be trained.
-            optimizer (optim.Optimizer): The optimizer used for training the model.
-            loss_fn (nn.Module): The loss function used to compute the loss.
-            n_epochs (int): The number of epochs to train the model.
-            trainloader (DataLoader): DataLoader providing training batches.
-            valoader (DataLoader): DataLoader providing validation batches.
-            device (torch.device): The device to which tensors and the model should be moved (CPU or GPU).
+    Args:
+        context (OpExecutionContext | AssetExecutionContext): The execution context provided by Dagster.
+        model (nn.Module): The PyTorch model to be trained.
+        optimizer (optim.Optimizer): The optimizer used for training the model.
+        loss_fn (nn.Module): The loss function used to compute the loss.
+        n_epochs (int): The number of epochs to train the model.
+        trainloader (DataLoader): DataLoader providing training batches.
+        valoader (DataLoader): DataLoader providing validation batches.
+        device (torch.device): The device to which tensors and the model should be moved (CPU or GPU).
 
-        Returns:
-            dict[str, float]: A dictionary where keys are epoch identifiers and values are accuracy percentages.
-        """
+    Returns:
+        dict[str, float]: A dictionary where keys are epoch identifiers and values are accuracy percentages.
+    """
     acc_per_epoch: dict[str, float] = {}
     for epoch in range(n_epochs):
         model.train()
@@ -66,9 +74,9 @@ def train(
 def get_device() -> str:
     """Determines the device to be used for training (CUDA, MPS, or CPU).
 
-        Returns:
-            torch.device: The device to be used for training.
-        """
+    Returns:
+        torch.device: The device to be used for training.
+    """
     return (
         "cuda"
         if torch.cuda.is_available()
@@ -81,12 +89,12 @@ def get_device() -> str:
 def get_optimizer(model: nn.Module) -> optim.Optimizer:
     """Creates an Adam optimizer for the given model.
 
-        Args:
-            model (nn.Module): The PyTorch model for which the optimizer is created.
+    Args:
+        model (nn.Module): The PyTorch model for which the optimizer is created.
 
-        Returns:
-            optim.Optimizer: The Adam optimizer configured for the model's parameters.
-        """
+    Returns:
+        optim.Optimizer: The Adam optimizer configured for the model's parameters.
+    """
     return optim.Adam(model.parameters())
 
 
