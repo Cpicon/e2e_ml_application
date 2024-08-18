@@ -11,7 +11,7 @@ readme = "README.md"
 python = ">=3.10,<3.13"
 python-dotenv = "^1.0.1"
 pandas= "^2.2.2"
-torch = "2.2.2"
+torch = "2.4.0"
 scikit-learn = "^1.5.1"
 dagster = "^1.8.0"
 dagster-pandas = "^0.24.0"
@@ -19,6 +19,8 @@ dagster-graphql = "^1.8.0"
 dagster-webserver = "^1.8.0"
 dagster-postgres = "^0.24.0"
 dagster-docker = "^0.24.0"
+matplotlib = "^3.9.2"
+torchvision = "^0.19.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.2"
@@ -26,3 +28,7 @@ pytest = "^8.2.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.dagster]
+module_name = "e2eML.orchestrator.definition"
+code_location_name = "tutorial"
