@@ -9,7 +9,12 @@ services:
       POSTGRES_PASSWORD: "postgres_password"
       POSTGRES_DB: "postgres_db"
     networks:
-      - dagster_network
+      - project_network
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-p", "${PG_PORT}", "-U", "${PG_USER}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
   # This service runs the gRPC server that loads your user code, in both dagster-webserver
   # and dagster-daemon. By setting DAGSTER_CURRENT_IMAGE to its own image, we tell the
@@ -30,7 +35,7 @@ services:
       DAGSTER_POSTGRES_DB: "postgres_db"
       DAGSTER_CURRENT_IMAGE: "dagster_user_code_image"
     networks:
-      - dagster_network
+      - project_network
 
   # This service runs dagster-webserver, which loads your user code from the user code container.
   # Since our instance uses the QueuedRunCoordinator, any runs submitted from the webserver will be put on
@@ -61,7 +66,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
     networks:
-      - dagster_network
+      - project_network
     depends_on:
       - dagster_postgresql
       - dagster_user_code
@@ -83,12 +88,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
     networks:
-      - dagster_network
+      - project_network
     depends_on:
       - dagster_postgresql
       - dagster_user_code
 
 networks:
-  dagster_network:
-    driver: bridge
-    name: dagster_network
+  project_network:
+    external: true

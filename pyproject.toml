@@ -17,12 +17,16 @@ dagster = "^1.8.0"
 dagster-pandas = "^0.24.0"
 dagster-graphql = "^1.8.0"
 dagster-webserver = "^1.8.0"
+dagster-mlflow = "^0.24.1"
 dagster-postgres = "^0.24.0"
 dagster-docker = "^0.24.0"
 matplotlib = "^3.9.2"
 torchvision = "^0.19.0"
 mlflow = "^2.15.1"
 boto3 = "^1.35.0"
+torchmetrics = "^1.4.1"
+psutil = "^6.0.0"
+
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.2.2"
