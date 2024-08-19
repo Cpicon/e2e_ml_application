@@ -23,11 +23,11 @@ COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
 WORKDIR /opt/dagster/app
 
-COPY e2eML/ /opt/dagster/app/
+COPY e2eML/ /opt/dagster/app/e2eML/
 
 # Run dagster gRPC server on port 4000
 EXPOSE 4000
 
 # Using CMD rather than ENTRYPOINT allows the command to be overridden in
 # run launchers or executors to run other commands using this image
-CMD ["dagster", "api", "grpc", "-h", "0.0.0.0", "-p", "4000", "-f", "repo.py"]
+CMD ["dagster", "api", "grpc", "-m", "e2eML.orchestrator.definition", "-h", "0.0.0.0", "-p", "4000"]

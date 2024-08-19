@@ -1,8 +1,10 @@
+import os
+
 from dagster import (
     Definitions,
     ScheduleDefinition,
     define_asset_job,
-    load_assets_from_modules,
+    load_assets_from_modules, EnvVar
 )
 from ..ingest import mnist as ingest_mnist
 from ..train import mnist as train_mnist
@@ -37,12 +39,12 @@ mnist_train_job = define_asset_job(
             "mlflow": {
                 "config": {
                     "experiment_name": "MNIST Experiment",
-                    "mlflow_tracking_uri": "http://localhost:5005",
+                    "mlflow_tracking_uri": os.getenv("MLFLOW_TRACKING_URI"),
                     # env variables to pass to mlflow
                     "env": {
-                        "MLFLOW_S3_ENDPOINT_URL": "http://localhost:9000",
-                        "AWS_ACCESS_KEY_ID": "awsaccesskey",
-                        "AWS_SECRET_ACCESS_KEY": "awssecretkey",
+                        "MLFLOW_S3_ENDPOINT_URL": os.getenv("MLFLOW_S3_ENDPOINT_URL"),
+                        "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
+                        "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
                     },
                     # env variables you want to log as mlflow tags
                     "env_to_tag": ["DOCKER_IMAGE_TAG"],
