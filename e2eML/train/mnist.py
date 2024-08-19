@@ -19,15 +19,16 @@ from ..pipeline_configs import MNISTConfig
 
 mlflow.enable_system_metrics_logging()
 
+
 def train(
-        context: OpExecutionContext | AssetExecutionContext,
-        model: nn.Module,
-        optimizer: optim.Optimizer,
-        loss_fn: nn.Module,
-        n_epochs: int,
-        trainloader: DataLoader,
-        valoader: DataLoader,
-        device: str,
+    context: OpExecutionContext | AssetExecutionContext,
+    model: nn.Module,
+    optimizer: optim.Optimizer,
+    loss_fn: nn.Module,
+    n_epochs: int,
+    trainloader: DataLoader,
+    valoader: DataLoader,
+    device: str,
 ) -> tuple[dict[str, float], nn.Module]:
     """Trains the model on the training data and evaluates it on the validation data.
 
@@ -107,6 +108,7 @@ def get_optimizer(model: nn.Module) -> optim.Optimizer:
     """
     return optim.Adam(model.parameters())
 
+
 @multi_asset(
     outs={member.name: AssetOut(is_required=False) for member in ModelClassifierEnum},
     resource_defs={"mlflow": mlflow_tracking},
@@ -152,7 +154,9 @@ def train_model(context: AssetExecutionContext, config: MNISTConfig):
         mlflow.log_dict(acc, "accuracies.json")
 
         # Log the model
-        mlflow.pytorch.log_model(model, artifact_path=f"{model_name}", registered_model_name=model_name)
+        mlflow.pytorch.log_model(
+            model, artifact_path=f"{model_name}", registered_model_name=model_name
+        )
 
         # #register model
         # client = mlflow.tracking.MlflowClient()

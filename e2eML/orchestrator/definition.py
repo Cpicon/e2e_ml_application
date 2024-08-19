@@ -4,7 +4,8 @@ from dagster import (
     Definitions,
     ScheduleDefinition,
     define_asset_job,
-    load_assets_from_modules, EnvVar
+    load_assets_from_modules,
+    EnvVar,
 )
 from ..ingest import mnist as ingest_mnist
 from ..train import mnist as train_mnist
@@ -53,7 +54,7 @@ mnist_train_job = define_asset_job(
                 }
             }
         }
-    }
+    },
 )
 
 # Addition: a ScheduleDefinition the job it should run and a cron schedule of how frequently to run it
