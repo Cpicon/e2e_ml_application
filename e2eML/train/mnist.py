@@ -1,6 +1,8 @@
+import mlflow
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torchmetrics import Accuracy
 from dagster import (
     MaterializeResult,
     MetadataValue,
@@ -9,23 +11,24 @@ from dagster import (
     multi_asset,
     OpExecutionContext,
 )
+from dagster_mlflow import mlflow_tracking
 from torch.utils.data import DataLoader
-
 from ..ingest import get_data_loader
 from ..models import ModelClassifierEnum, get_model
 from ..pipeline_configs import MNISTConfig
 
+mlflow.enable_system_metrics_logging()
 
 def train(
-    context: OpExecutionContext | AssetExecutionContext,
-    model: nn.Module,
-    optimizer: optim.Optimizer,
-    loss_fn: nn.Module,
-    n_epochs: int,
-    trainloader: DataLoader,
-    valoader: DataLoader,
-    device: str,
-) -> dict[str, float]:
+        context: OpExecutionContext | AssetExecutionContext,
+        model: nn.Module,
+        optimizer: optim.Optimizer,
+        loss_fn: nn.Module,
+        n_epochs: int,
+        trainloader: DataLoader,
+        valoader: DataLoader,
+        device: str,
+) -> tuple[dict[str, float], nn.Module]:
     """Trains the model on the training data and evaluates it on the validation data.
 
     Args:
@@ -42,16 +45,23 @@ def train(
         dict[str, float]: A dictionary where keys are epoch identifiers and values are accuracy percentages.
     """
     acc_per_epoch: dict[str, float] = {}
+    metric_fn = Accuracy(task="multiclass", num_classes=10).to(device)
+    loss = 0
+    accuracy = 0
+    model_name = model.__class__.__name__
     for epoch in range(n_epochs):
         model.train()
         for X_batch, y_batch in trainloader:
             X_batch = X_batch.to(device)
             y_batch = y_batch.to(device)
             y_pred = model(X_batch)
+            accuracy = metric_fn(y_pred, y_batch)
             loss = loss_fn(y_pred, y_batch)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+        mlflow.log_metric(f"loss_{model_name}", loss, step=epoch)
+        mlflow.log_metric(f"accuracy_train_{model_name}", accuracy, step=epoch)
         # Validation
         model.eval()
         count = 0
@@ -60,15 +70,15 @@ def train(
             for X_batch, y_batch in valoader:
                 X_batch = X_batch.to(device)
                 y_batch = y_batch.to(device)
-
                 y_pred = model(X_batch)
                 acc += (torch.argmax(y_pred, 1) == y_batch).float().sum()
                 count += len(y_batch)
         acc = acc / count
         acc = float(acc * 100)
+        mlflow.log_metric(f"accuracy_val_{model_name}", acc, step=epoch)
         acc_per_epoch[f"epoch_{epoch}_accuracy"] = acc
         context.log.info("Epoch %d: model accuracy %.2f%%" % (epoch, acc))
-    return acc_per_epoch
+    return acc_per_epoch, model
 
 
 def get_device() -> str:
@@ -97,9 +107,9 @@ def get_optimizer(model: nn.Module) -> optim.Optimizer:
     """
     return optim.Adam(model.parameters())
 
-
 @multi_asset(
     outs={member.name: AssetOut(is_required=False) for member in ModelClassifierEnum},
+    resource_defs={"mlflow": mlflow_tracking},
 )
 def train_model(context: AssetExecutionContext, config: MNISTConfig):
     """Trains multiple models on the MNIST dataset and yields results for each model.
@@ -117,11 +127,16 @@ def train_model(context: AssetExecutionContext, config: MNISTConfig):
     accuracies = {}
     model_names = config.ml_model_names
     for model_name in model_names:
-        # context.log.info(f"Training model {key}")
+        context.log.info(f"Training model {model_name}")
         model = get_model(model_name)
         optimizer = get_optimizer(model)
         loss_fn = nn.CrossEntropyLoss()
-        acc = train(
+        mlflow.log_param(f"optimizer_{model_name}", optimizer.__class__.__name__)
+        mlflow.log_param(f"loss_function_{model_name}", loss_fn.__class__.__name__)
+        mlflow.log_param(f"n_epochs_{model_name}", n_epochs)
+        mlflow.log_param(f"batch_size_{model_name}", config.batch_size)
+
+        acc, model = train(
             context,
             model,
             optimizer,
@@ -133,11 +148,24 @@ def train_model(context: AssetExecutionContext, config: MNISTConfig):
         )
         accuracies[model_name] = acc
 
+        # Log metrics
+        mlflow.log_dict(acc, "accuracies.json")
+
+        # Log the model
+        mlflow.pytorch.log_model(model, artifact_path=f"{model_name}", registered_model_name=model_name)
+
+        # #register model
+        # client = mlflow.tracking.MlflowClient()
+        # client.create_registered_model(model_name)
+        # runs_uri = f"runs:/{context.run_id}/{model_name}"
+        # model_src = RunsArtifactRepository.get_underlying_uri(runs_uri)
+        # client.create_model_version(model_name, model_src, context.run_id)
+
         yield MaterializeResult(
             asset_key=model_name,
             metadata={
                 "ml_model_name": MetadataValue.text(
-                    model_name.name
+                    model_name
                 ),  # Metadata can be any key-value pair
                 "accuracy": MetadataValue.json(acc),
                 "optimizer": MetadataValue.text(optimizer.__class__.__name__),
