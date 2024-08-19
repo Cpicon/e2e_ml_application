@@ -44,7 +44,9 @@ def train_MNIST_data(
     context.log.info(f"Training data: {training_data}")
     context.log.info(f"Raw data save to: {training_data.raw_folder}")
     os.makedirs(config.train_folder_path, exist_ok=True)
-    save_path = os.path.join(config.train_folder_path, config.train_filename)
+    save_path = os.path.join(
+        os.getcwd(), config.train_folder_path, config.train_filename
+    )
     torch.save(training_data, save_path)
     context.log.info(f"Data saved to {save_path}")
 
@@ -97,7 +99,7 @@ def test_MNIST_data(
     context.log.info(f"Raw data save to {test_data.raw_folder}")
 
     os.makedirs(config.test_folder_path, exist_ok=True)
-    save_path = os.path.join(config.test_folder_path, config.test_filename)
+    save_path = os.path.join(os.getcwd(), config.test_folder_path, config.test_filename)
     torch.save(test_data, save_path)
     context.log.info(f"Data saved to {save_path}")
 
@@ -141,7 +143,9 @@ def get_data_loader(
             - The DataLoader for the validation data.
             - The DataLoader for the test data.
     """
-    training_path = os.path.join(config.train_folder_path, config.train_filename)
+    training_path = os.path.join(
+        os.getcwd(), config.train_folder_path, config.train_filename
+    )
     training_data = torch.load(training_path)
 
     # Define the validation percentage
@@ -166,7 +170,7 @@ def get_data_loader(
         validation_data, batch_size=config.batch_size, shuffle=False
     )
 
-    test_path = os.path.join(config.test_folder_path, config.test_filename)
+    test_path = os.path.join(os.getcwd(), config.test_folder_path, config.test_filename)
     test_data = torch.load(test_path)
     context.log.info(f"Test data loaded: {test_data}")
     test_dataloader = DataLoader(test_data, batch_size=config.batch_size, shuffle=False)

@@ -20,7 +20,7 @@ build:
 # Run the docker container
 run:
 	@echo "Running docker containers..."
-	docker compose -f $(DOCKER_COMPOSE_FILE) up --detach --wait
+	docker compose -f $(DOCKER_COMPOSE_FILE) up --detach
 
 # Stop the docker container
 stop:
