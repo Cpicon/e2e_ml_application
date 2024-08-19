@@ -21,6 +21,16 @@ ENV VIRTUAL_ENV=/opt/dagster/app/.venv \
 
 COPY --from=builder ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 
+# Set $DAGSTER_HOME and copy dagster instance there
+
+ENV DAGSTER_HOME=/opt/dagster/dagster_home
+
+RUN mkdir -p $DAGSTER_HOME
+
+COPY deployment/dev/dagster.yaml deployment/dev/workspace.yaml $DAGSTER_HOME
+
+# Add repository code
+
 WORKDIR /opt/dagster/app
 
 COPY e2eML/ /opt/dagster/app/e2eML/

@@ -8,13 +8,13 @@ services:
       POSTGRES_USER: "postgres_user"
       POSTGRES_PASSWORD: "postgres_password"
       POSTGRES_DB: "postgres_db"
-    networks:
-      - project_network
     healthcheck:
       test: [ "CMD", "pg_isready", "-p", "5432", "-U", "postgres_user" ]
       interval: 5s
       timeout: 5s
       retries: 3
+    networks:
+      - project_network
 
   # This service runs the gRPC server that loads your user code, in both dagster-webserver
   # and dagster-daemon. By setting DAGSTER_CURRENT_IMAGE to its own image, we tell the
@@ -47,8 +47,8 @@ services:
   # a queue and later dequeued and launched by dagster-daemon.
   dagster_webserver:
     build:
-      context: .
-      dockerfile: ./Dockerfile_dagster_base
+      context: ../..
+      dockerfile: deployment/dev/Dockerfile_dagster_base
     entrypoint:
       - dagster-webserver
       - -h
@@ -67,14 +67,26 @@ services:
       DAGSTER_POSTGRES_USER: "postgres_user"
       DAGSTER_POSTGRES_PASSWORD: "postgres_password"
       DAGSTER_POSTGRES_DB: "postgres_db"
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     volumes: # Make docker client accessible so we can terminate containers from the webserver
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
+    depends_on:
+      dagster_postgresql:
+         condition: service_healthy
+      dagster_user_code:
+         condition: service_started
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/server_info" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - project_network
-    depends_on:
-      - dagster_postgresql
-      - dagster_user_code
+
 
   # This service runs the dagster-daemon process, which is responsible for taking runs
   # off of the queue and launching them, as well as creating runs from schedules or sensors.
@@ -89,14 +101,21 @@ services:
       DAGSTER_POSTGRES_USER: "postgres_user"
       DAGSTER_POSTGRES_PASSWORD: "postgres_password"
       DAGSTER_POSTGRES_DB: "postgres_db"
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
     volumes: # Make docker client accessible so we can launch containers using host docker
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp/io_manager_storage:/tmp/io_manager_storage
-    networks:
-      - project_network
+      - dagster_artifact_storage:/opt/dagster/app/data/MNIST/train/
+      - dagster_artifact_storage:/opt/dagster/app/data/MNIST/test/
+      - dagster_artifact_storage:/opt/dagster/app/data/MNIST/raw/
     depends_on:
       - dagster_postgresql
       - dagster_user_code
+    networks:
+      - project_network
 
   minio:
       restart: always
@@ -117,13 +136,13 @@ services:
           MINIO_SECRET_KEY: ${AWS_SECRET_ACCESS_KEY}
       volumes:
           - minio_data:/data
-      networks:
-          - project_network
       healthcheck:
           test: [ "CMD", "mc", "ready", "local" ]
           interval: 5s
           timeout: 5s
           retries: 5
+      networks:
+        - project_network
 
   mc:
       image: minio/mc
@@ -141,17 +160,17 @@ services:
           /usr/bin/mc mb minio/mlflow;
           exit 0;
           "
-      networks:
-          - project_network
       volumes:
           - ./wait-for-it.sh:/tmp/wait-for-it.sh
+      networks:
+        - project_network
 
   debug:
       image: busybox
       container_name: debug
       command: tail -f /dev/null
       networks:
-          - project_network
+        - project_network
 
   mlflow_postgresql:
       restart: always
@@ -166,13 +185,13 @@ services:
           - dbdata:/var/lib/postgresql/data
       ports:
           - "5433:5433"
-      networks:
-          - project_network
       healthcheck:
           test: [ "CMD", "pg_isready", "-p", "5433", "-U", "${MLFLOW_PG_USER}" ]
           interval: 5s
           timeout: 5s
           retries: 3
+      networks:
+        - project_network
 
   mlflow_tracking_server:
       restart: always
@@ -190,13 +209,13 @@ services:
           AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
           AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       entrypoint: mlflow server --backend-store-uri postgresql://${MLFLOW_PG_USER}:${MLFLOW_PG_PWD}@mlflow_postgresql:5433/${MLFLOW_DB} --default-artifact-root s3://mlflow/ --serve-artifacts --serve-artifacts --host 0.0.0.0:5005
-      networks:
-          - project_network
       healthcheck:
-          test: [ "CMD", "curl", "-f", "http://localhost:5000" ]
+          test: [ "CMD", "curl", "-f", "http://localhost:5005" ]
           interval: 30s
           timeout: 10s
           retries: 3
+      networks:
+        - project_network
       depends_on:
           mlflow_postgresql:
               condition: service_healthy
@@ -206,6 +225,7 @@ services:
 volumes:
     dbdata:
     minio_data:
+    dagster_artifact_storage:
 
 networks:
   project_network:
