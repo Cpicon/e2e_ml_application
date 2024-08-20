@@ -222,6 +222,23 @@ services:
           mc:
               condition: service_completed_successfully
 
+  mlserver:
+    build:
+      context: ../..
+      dockerfile: deployment/dev/Dockerfile_mlserver
+    image: mlserver
+    container_name: mlserver
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      MLFLOW_S3_ENDPOINT_URL: ${MLFLOW_S3_ENDPOINT_URL}
+      MLFLOW_TRACKING_URI: ${MLFLOW_TRACKING_URI}
+      MODEL_ALIAS: ${MODEL_ALIAS}
+    networks:
+      - project_network
+    ports:
+      - "9595:9595"
+
 volumes:
     dbdata:
     minio_data:

@@ -1,0 +1,4 @@
+{
+    "name": "Net",
+    "implementation": "image_classification.MinstModel"
+}

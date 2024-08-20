@@ -3,15 +3,6 @@ Efficiently deploy a machine learning model using containerized environments wit
 
 This repository contains the code and scripts to train, deploy, and serve a simple neural network model for the MNIST dataset. The solution is designed to be reproducible, scalable, and efficient, with infrastructure automation, monitoring, and logging.
 
-## Table of Contents
-1. [Environment Setup](#environment-setup)
-2. [Data Handling](#data-handling)
-3. [Model Training](#model-training)
-4. [Model Deployment](#model-deployment)
-5. [Monitoring and Logging](#monitoring-and-logging)
-6. [Infrastructure Automation](#infrastructure-automation)
-7. [Reproducing the Workflow](#reproducing-the-workflow)
-
 ## Environment Setup
 
 The environment is set up using Docker to ensure reproducibility across different platforms.
@@ -22,90 +13,162 @@ The environment is set up using Docker to ensure reproducibility across differen
     git clone git@github.com:Cpicon/e2e_ml_application.git
     cd e2e_ml_application
     ```
+   
+## Prerequisites
 
-you can use the provided `Makefile` to build, run, stop, and clean up Docker containers for different environments (dev, stage, prod).
+- Python 3.10
+- Docker
+- Poetry (Python dependency management tool)
 
-#### Steps:
-1. Build the Docker image for the specified environment:
-    ```bash
-    make build TARGET=<dev|stage|prod>
+## Setting Up the Environment
+
+1. **Create a Virtual Environment:**
+   - First, create a virtual environment using Python 3.10:
+     ```bash
+     python3.10 -m venv venv
+     source venv/bin/activate
+     ```
+
+2. **Install Poetry:**
+   - Install Poetry within the virtual environment:
+     ```bash
+     pip install poetry
+     ```
+
+3. **Install Project Dependencies:**
+   - Use Poetry to install all the required packages:
+     ```bash
+     poetry install
+     ```
+
+4. **Set Environment Variables:**
+   - Export the necessary environment variables for AWS and MLflow:
+     ```bash
+     export AWS_ACCESS_KEY_ID="awsaccesskey"
+     export AWS_SECRET_ACCESS_KEY="awssecretkey"
+     export MLFLOW_S3_ENDPOINT_URL="http://localhost:9000"
+     ```
+
+## Building and Running Docker Containers
+
+1. **Build Docker Images:**
+   - Use `make` to build the Docker images:
+     ```bash
+     make build
+     ```
+
+2. **Run Docker Containers:**
+   - After building the images, start the services using:
+     ```bash
+     make run
+     ```
+3. **Stop Docker Containers:**
+   - To stop the services, use:
+     ```bash
+     make stop
+     ```
+4. **Remove Docker Containers:**
+    - To remove the containers, use:
+      ```bash
+      make clean
+      ```
+
+## Using the Services
+
+- **Dagster (Pipeline Orchestrator):**
+  - Runs on [http://localhost:3000/](http://localhost:3000/).
+  - Navigate to the "Overview/Jobs" section to view and manage your pipelines.
+
+- **MLflow (Experiment Tracking and Model Registry):**
+  - Available on [http://localhost:5005](http://localhost:5005).
+  - Use MLflow to track your experiments, register models, and manage model versions.
+
+- **Minio (Object and Model Storage):**
+  - Runs on [http://localhost:9001](http://localhost:9001).
+  - Minio serves as the object storage solution for the models and data.
+
+- **MLServer (Model Deployment Service, HTTP Backend):**
+  - Accessible at [http://localhost:9595](http://localhost:9595).
+  - Use MLServer for deploying machine learning models with a RESTful API backend.
+
+## Running and Training a Model
+
+- To run and train a model, watch the following video tutorial: [![Watch the video](https://raw.githubusercontent.com/username/repository/branch/path/to/thumbnail.jpg)](https://raw.githubusercontent.com/username/repository/branch/path/to/video.mp4)
+
+## Deploying a Model
+
+- To deploy a model, watch the following video tutorial: [![Watch the video](https://raw.githubusercontent.com/username/repository/branch/path/to/thumbnail.jpg)](https://raw.githubusercontent.com/username/repository/branch/path/to/video.mp4)
+
+## Testing the Deployed Model
+
+- To test the deployed model, navigate to the root project folder and run:
+  ```bash
+  python model_query_example.py
     ```
 
-2. Run the Docker container for the specified environment:
-    ```bash
-    make run TARGET=<dev|stage|prod>
-    ```
 
-3. Stop the Docker container for the specified environment:
-    ```bash
-    make stop TARGET=<dev|stage|prod>
-    ```
+## Architecture Overview
 
-4. Clean up the Docker containers and associated resources:
-    ```bash
-    make clean TARGET=<dev|stage|prod>
-    ```
+The architecture of this project is centered around several key components orchestrated using Docker containers. Below is a high-level overview of the services involved:
 
-## Data Handling
+### 1. **Dagster**
 
-The MNIST dataset is automatically downloaded and preprocessed as part of the pipeline. Data versioning is managed using a data versioning tool to ensure reproducibility.
+- **Purpose**: Dagster is used as the pipeline orchestrator for managing and executing data pipelines.
+- **Components**:
+  - **Dagster PostgreSQL**: This service runs a PostgreSQL database for storing Dagster's run storage, schedule storage, and event logs.
+  - **Dagster User Code**: This container runs the gRPC server that loads your user code, enabling Dagster to execute pipelines. It is configured to use the same image when launching runs in new containers.
+  - **Dagster Webserver**: This service provides a web interface for interacting with Dagster, where you can view and manage pipelines.
+  - **Dagster Daemon**: The daemon process is responsible for taking runs off of the queue and launching them, as well as handling schedules and sensors.
 
-### Steps:
-1. The dataset is loaded and preprocessed in the `data_pipeline.py` script.
-2. To ensure data versioning and reproducibility, the pipeline integrates with a data versioning tool configured in `dvc.yaml`.
+- **References**:
+  - [What is Dagster?](https://dagster.io/blog/what-is-dagster)
+  - [Dagster Code Locations](https://dagster.io/blog/dagster-code-locations)
+  - [Dagster Logging](https://docs.dagster.io/concepts/logging#logging)
 
-## Model Training
+### 2. **MLflow**
 
-The model is a simple neural network designed to classify MNIST digits. Training scripts are provided in the `train.py` file.
+- **Purpose**: MLflow is used for tracking experiments, registering models, and managing model versions.
+- **Components**:
+  - **MLflow PostgreSQL**: A PostgreSQL database for storing MLflow tracking metadata.
+  - **MLflow Tracking Server**: This service hosts the MLflow server for tracking experiments and managing models.
 
-### Steps:
-1. Train the model:
-    ```bash
-    python train.py
-    ```
-2. The trained model will be saved and versioned automatically.
+### 3. **Minio**
 
-## Model Deployment
+- **Purpose**: Minio is used as an object storage solution for storing datasets, models, and other artifacts.
+- **Components**:
+  - **Minio Server**: A high-performance object storage server.
+  - **Minio Client (mc)**: A command-line tool for interacting with Minio.
 
-The trained model is deployed using a lightweight and scalable serving platform, allowing it to handle live inference requests.
+### 4. **MLServer**
 
-### Steps:
-1. Deploy the model using the provided script:
-    ```bash
-    python deploy.py
-    ```
-2. The model will be served at the specified endpoint, ready to handle inference requests.
+- **Purpose**: MLServer is used for deploying machine learning models via a RESTful API.
+- **Components**:
+  - **MLServer**: The main service responsible for serving the machine learning models.
 
-## Monitoring and Logging
+- **Reference**: [MLServer Documentation](https://mlserver.readthedocs.io/en/latest/index.html)
 
-Logging and monitoring are implemented to track the performance and health of the model during both training and inference.
+### Network and Volumes
 
-### Features:
-- Training and inference logs are captured using a logging framework.
-- Basic monitoring includes metrics such as request rate, latency, and error rates.
+- **Networks**: All services are connected through a `project_network` to facilitate communication between containers.
+- **Volumes**: Persistent storage is managed using Docker volumes, ensuring that data persists across container restarts.
 
-## Infrastructure Automation
 
-Infrastructure as Code (IaC) is used to automate the setup of cloud infrastructure, ensuring a seamless deployment experience.
+## Project Structure
 
-### Steps:
-1. Use the provided IaC scripts to set up the required cloud infrastructure:
-    ```bash
-    terraform apply
-    ```
-2. The infrastructure will be provisioned automatically, ready for model deployment.
+- **deployment/**
+  - Contains Docker-related configurations and deployment scripts.
+  - **dev/**: Contains development-specific Dockerfiles, Docker Compose files, and configuration files for setting up the environment.
+  - **prod/**: Contains production-specific Docker Compose file.
+  - **stage/**: Contains staging-specific Docker Compose file.
 
-## Reproducing the Workflow
+- **e2eML/**
+  - The main package directory for the project. It contains various submodules responsible for different stages of the machine learning lifecycle.
+  - **clients/**: Contains code to interact with external services such as MLServer.
+  - **evaluate/**: Handles the evaluation of machine learning models.
+  - **inference/**: Contains scripts for making predictions using trained models.
+  - **ingest/**: Responsible for data ingestion processes, such as loading datasets.
+  - **models/**: Contains definitions for machine learning models.
+  - **orchestrator/**: Contains code related to pipeline orchestration, likely tied to Dagster.
+  - **pipeline_configs/**: Holds configuration files for various pipelines.
+  - **train/**: Contains scripts and modules for training machine learning models.
 
-To reproduce the entire workflow, follow these steps:
-
-1. **Set up the environment:** Build and run the Docker container.
-2. **Handle the data:** Run the data pipeline script to load and preprocess the dataset.
-3. **Train the model:** Execute the training script to train and save the model.
-4. **Deploy the model:** Use the deployment script to serve the model.
-5. **Monitor and log:** Check logs and monitor metrics during training and inference.
-6. **Automate the infrastructure:** Use the IaC tools to provision necessary cloud resources.
-
-### Additional Information
-- Ensure all dependencies are listed in the `requirements.txt` file.
-- Use the `Makefile` to streamline common tasks such as building, training, and deploying.
