@@ -1,4 +1,6 @@
+import copy
 import mlflow
+from mlflow.models.signature import infer_signature
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -109,6 +111,29 @@ def get_optimizer(model: nn.Module) -> optim.Optimizer:
     return optim.Adam(model.parameters())
 
 
+def get_signature(data_loader: DataLoader, device, model) -> infer_signature:
+    """Infer the signature of the model based on the data loader.
+
+    Args:
+        data_loader (DataLoader): DataLoader providing training batches.
+        device (str): The device to which tensors and the model should be moved (CPU or GPU).
+        model (nn.Module): The trained model.
+
+    Returns:
+        signature: The signature of the model based on the data loader.
+    """
+    # deep copy dataloader to use different memory location
+    data_loader = copy.deepcopy(data_loader)
+
+    # Infer model signature
+    sample_input, _ = next(iter(data_loader))
+    sample_input = sample_input.to(device)
+    signature = infer_signature(
+        sample_input.cpu().numpy(), model(sample_input).cpu().detach().numpy()
+    )
+    return signature
+
+
 @multi_asset(
     outs={member.name: AssetOut(is_required=False) for member in ModelClassifierEnum},
     resource_defs={"mlflow": mlflow_tracking},
@@ -153,9 +178,14 @@ def train_model(context: AssetExecutionContext, config: MNISTConfig):
         # Log metrics
         mlflow.log_dict(acc, "accuracies.json")
 
+        signature = get_signature(train_dataloader, device, model)
+
         # Log the model
         mlflow.pytorch.log_model(
-            model, artifact_path=f"{model_name}", registered_model_name=model_name
+            model,
+            artifact_path=f"{model_name}",
+            registered_model_name=model_name,
+            signature=signature,
         )
 
         # #register model
@@ -169,7 +199,7 @@ def train_model(context: AssetExecutionContext, config: MNISTConfig):
             asset_key=model_name,
             metadata={
                 "ml_model_name": MetadataValue.text(
-                    model_name
+                    str(model_name)
                 ),  # Metadata can be any key-value pair
                 "accuracy": MetadataValue.json(acc),
                 "optimizer": MetadataValue.text(optimizer.__class__.__name__),
