@@ -71,6 +71,11 @@ def evaluate_model(mlserver_client: MlServerClient, test_loader: DataLoader):
 
 
 if __name__ == "__main__":
+    #check if env variables are set
+    assert os.getenv("AWS_ACCESS_KEY_ID"), "AWS_ACCESS_KEY_ID not set"
+    assert os.getenv("AWS_SECRET_ACCESS_KEY"), "AWS_SECRET_ACCESS_KEY not set"
+    assert os.getenv("MLFLOW_S3_ENDPOINT_URL"), "MLFLOW_S3_ENDPOINT_URL not set"
+
     # Set up logging to print to stdout
     logging.basicConfig(level=logging.INFO, handlers=[StreamHandler()])
     mlserver_client = initialize_mlserver_client()
