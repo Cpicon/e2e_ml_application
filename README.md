@@ -46,7 +46,7 @@ The environment is set up using Docker to ensure reproducibility across differen
      ```bash
      export AWS_ACCESS_KEY_ID="awsaccesskey"
      export AWS_SECRET_ACCESS_KEY="awssecretkey"
-     export MLFLOW_S3_ENDPOINT_URL="http://localhost:9000"
+     export LOCAL_MLFLOW_S3_ENDPOINT_URL="http://localhost:9000"
      ```
 
 ## Building and Running Docker Containers
@@ -60,6 +60,7 @@ The environment is set up using Docker to ensure reproducibility across differen
 2. **Run Docker Containers:**
    - After building the images, start the services using:
      ```bash
+     cp deployment/dev/local.env deployment/dev/.env
      make run
      ```
 3. **Stop Docker Containers:**

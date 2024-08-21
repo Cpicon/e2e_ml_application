@@ -74,7 +74,9 @@ if __name__ == "__main__":
     #check if env variables are set
     assert os.getenv("AWS_ACCESS_KEY_ID"), "AWS_ACCESS_KEY_ID not set"
     assert os.getenv("AWS_SECRET_ACCESS_KEY"), "AWS_SECRET_ACCESS_KEY not set"
-    assert os.getenv("MLFLOW_S3_ENDPOINT_URL"), "MLFLOW_S3_ENDPOINT_URL not set"
+    assert os.getenv("LOCAL_MLFLOW_S3_ENDPOINT_URL"), "MLFLOW_S3_ENDPOINT_URL not set"
+    # set s3 endpoint url from local to avoid overwritte docker network DNS Address
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = os.getenv("LOCAL_MLFLOW_S3_ENDPOINT_URL")
 
     # Set up logging to print to stdout
     logging.basicConfig(level=logging.INFO, handlers=[StreamHandler()])

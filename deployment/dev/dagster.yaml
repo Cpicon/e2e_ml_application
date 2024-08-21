@@ -20,12 +20,13 @@ run_launcher:
       - AWS_SECRET_ACCESS_KEY
     network: project_network
     container_kwargs:
+      auto_remove: true
       volumes: # Make docker client accessible to any launched containers as well
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp/io_manager_storage:/tmp/io_manager_storage
-        - dagster_artifact_storage:/opt/dagster/app/data/MNIST/train/
-        - dagster_artifact_storage:/opt/dagster/app/data/MNIST/test/
-        - dagster_artifact_storage:/opt/dagster/app/data/MNIST/raw/
+        - dev_dagster_artifact_storage:/opt/dagster/app/data/MNIST/train/
+        - dev_dagster_artifact_storage:/opt/dagster/app/data/MNIST/test/
+        - dev_dagster_artifact_storage:/opt/dagster/app/data/MNIST/raw/
 
 run_storage:
   module: dagster_postgres.run_storage
